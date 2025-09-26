@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habit Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #ffffff;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #37352f;
+        }
+
+        .tracker {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .months {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 5px;
+            padding-left: 30px;
+        }
+
+        .month {
+            font-size: 11px;
+            color: #6b6b6b;
+            min-width: 55px;
+        }
+
+        .weeks-container {
+            display: flex;
+            gap: 3px;
+        }
+
+        .days-labels {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding-top: 0px;
+        }
+
+        .day-label {
+            height: 12px;
+            font-size: 10px;
+            color: #6b6b6b;
+            display: flex;
+            align-items: center;
+        }
+
+        .weeks {
+            display: flex;
+            gap: 3px;
+        }
+
+        .week {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .day {
+            width: 12px;
+            height: 12px;
+            background: #ebedf0;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .day:hover {
+            border: 1px solid #000;
+        }
+
+        .day[data-level="1"] { background: #9be9a8; }
+        .day[data-level="2"] { background: #40c463; }
+        .day[data-level="3"] { background: #30a14e; }
+        .day[data-level="4"] { background: #216e39; }
+
+        .legend {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            color: #6b6b6b;
+            margin-top: 10px;
+        }
+
+        .legend-scale {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .controls {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f7f7f7;
+            border-radius: 8px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #37352f;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #2d2b26;
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f7f7f7;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #37352f;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: #1b1f23;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📊 Habit Tracker</h2>
+        
+        <div class="months" id="months"></div>
+        
+        <div class="tracker">
+            <div class="days-labels">
+                <div class="day-label">Mon</div>
+                <div class="day-label"></div>
+                <div class="day-label">Wed</div>
+                <div class="day-label"></div>
+                <div class="day-label">Fri</div>
+                <div class="day-label"></div>
+                <div class="day-label">Sun</div>
+            </div>
+            <div class="weeks" id="weeks"></div>
+        </div>
+
+        <div class="legend">
+            <span>Less</span>
+            <div class="legend-scale">
+                <div class="legend-box" style="background: #ebedf0;"></div>
+                <div class="legend-box" style="background: #9be9a8;"></div>
+                <div class="legend-box" style="background: #40c463;"></div>
+                <div class="legend-box" style="background: #30a14e;"></div>
+                <div class="legend-box" style="background: #216e39;"></div>
+            </div>
+            <span>More</span>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="controls">
+            <h3 style="margin-bottom: 10px;">Quick Actions</h3>
+            <div class="button-group">
+                <button onclick="clearAll()">Clear All</button>
+                <button onclick="randomFill()">Demo Fill</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        const data = {};
+        const weeksContainer = document.getElementById('weeks');
+        const monthsContainer = document.getElementById('months');
+        const tooltip = document.getElementById('tooltip');
+        const statsDiv = document.getElementById('stats');
+
+        function generateCalendar() {
+            const today = new Date();
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() - 364);
+            
+            let currentDate = new Date(startDate);
+            let currentWeek = [];
+            let weeks = [];
+            
+            const startDay = currentDate.getDay();
+            for (let i = 0; i < startDay; i++) {
+                currentWeek.push(null);
+            }
+
+            while (currentDate <= today) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                currentWeek.push(dateStr);
+                
+                if (currentWeek.length === 7) {
+                    weeks.push([...currentWeek]);
+                    currentWeek = [];
+                }
+                
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            if (currentWeek.length > 0) {
+                while (currentWeek.length < 7) {
+                    currentWeek.push(null);
+                }
+                weeks.push(currentWeek);
+            }
+
+            renderMonths(weeks);
+            renderWeeks(weeks);
+        }
+
+        function renderMonths(weeks) {
+            const months = [];
+            let lastMonth = -1;
+            
+            weeks.forEach((week, weekIndex) => {
+                const firstDay = week.find(d => d !== null);
+                if (firstDay) {
+                    const date = new Date(firstDay);
+                    const month = date.getMonth();
+                    if (month !== lastMonth) {
+                        months.push({ month, weekIndex });
+                        lastMonth = month;
+                    }
+                }
+            });
+
+            monthsContainer.innerHTML = months.map(m => 
+                `<div class="month" style="position: absolute; left: ${m.weekIndex * 15 + 30}px;">
+                    ${new Date(2024, m.month).toLocaleString('default', { month: 'short' })}
+                </div>`
+            ).join('');
+        }
+
+        function renderWeeks(weeks) {
+            weeksContainer.innerHTML = weeks.map(week => `
+                <div class="week">
+                    ${week.map(date => 
+                        date ? `<div class="day" data-date="${date}" data-level="${data[date] || 0}"></div>` 
+                             : '<div style="width: 12px; height: 12px;"></div>'
+                    ).join('')}
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.day').forEach(day => {
+                day.addEventListener('click', (e) => {
+                    const date = e.target.dataset.date;
+                    const currentLevel = parseInt(data[date] || 0);
+                    data[date] = currentLevel >= 4 ? 0 : currentLevel + 1;
+                    e.target.dataset.level = data[date];
+                    updateStats();
+                    saveData();
+                });
+
+                day.addEventListener('mouseenter', (e) => {
+                    const date = e.target.dataset.date;
+                    const level = data[date] || 0;
+                    const formattedDate = new Date(date).toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                    });
+                    tooltip.textContent = `${level} activities on ${formattedDate}`;
+                    tooltip.classList.add('show');
+                    updateTooltipPosition(e);
+                });
+
+                day.addEventListener('mousemove', updateTooltipPosition);
+
+                day.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('show');
+                });
+            });
+        }
+
+        function updateTooltipPosition(e) {
+            tooltip.style.left = e.pageX + 10 + 'px';
+            tooltip.style.top = e.pageY - 30 + 'px';
+        }
+
+        function updateStats() {
+            const total = Object.values(data).reduce((sum, val) => sum + val, 0);
+            const activeDays = Object.values(data).filter(v => v > 0).length;
+            const currentStreak = calculateStreak();
+            
+            statsDiv.innerHTML = `
+                <strong>Your Progress:</strong> ${total} total activities • 
+                ${activeDays} active days • 
+                ${currentStreak} day current streak
+            `;
+        }
+
+        function calculateStreak() {
+            const today = new Date();
+            let streak = 0;
+            let currentDate = new Date(today);
+            
+            while (true) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                if (data[dateStr] && data[dateStr] > 0) {
+                    streak++;
+                    currentDate.setDate(currentDate.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+            
+            return streak;
+        }
+
+        function clearAll() {
+            Object.keys(data).forEach(key => delete data[key]);
+            document.querySelectorAll('.day').forEach(day => {
+                day.dataset.level = 0;
+            });
+            updateStats();
+            saveData();
+        }
+
+        function randomFill() {
+            document.querySelectorAll('.day').forEach(day => {
+                const date = day.dataset.date;
+                data[date] = Math.random() > 0.6 ? Math.floor(Math.random() * 5) : 0;
+                day.dataset.level = data[date];
+            });
+            updateStats();
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem('habitTrackerData', JSON.stringify(data));
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('habitTrackerData');
+            if (saved) {
+                Object.assign(data, JSON.parse(saved));
+            }
+        }
+
+        loadData();
+        generateCalendar();
+        updateStats();
+    </script>
+</body>
+</html>
